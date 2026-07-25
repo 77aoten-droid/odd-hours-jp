@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 type Story = {
   genre: string;
+  icon: string;
+  hook: string;
   title: string;
   original?: string;
   summary: string;
@@ -107,6 +109,8 @@ async function collectStories(): Promise<Story[]> {
     const original = info.title !== info.original ? info.original : undefined;
     stories.push({
       genre: "みんなが急に調べたもの",
+      icon: "🔎",
+      hook: rising.old ? `たった1日で、${rising.jump}人抜き！` : "きのうまで圏外、きょう急浮上！",
       title: info.title,
       original,
       summary: info.summary,
@@ -137,6 +141,13 @@ async function collectStories(): Promise<Story[]> {
   if (strongest) {
     stories.push({
       genre: "地球の動き",
+      icon: "🌍",
+      hook:
+        Math.abs(percent) < 12
+          ? "きょうの地球は、ほぼ平常運転"
+          : percent > 0
+            ? `いつもより約${percent}%、よく揺れた`
+            : `いつもより約${Math.abs(percent)}%、静かだった`,
       title: "世界の地震、きょうは多い？少ない？",
       summary: `直近24時間に世界で${dayQuakes.length}件の地震が観測されました。最大は${strongest.properties.place}付近のマグニチュード${strongest.properties.mag?.toFixed(1)}です。`,
       background:
@@ -183,6 +194,8 @@ async function collectStories(): Promise<Story[]> {
     const label = categoryJa[dominant[0]] || dominant[0];
     stories.push({
       genre: "衛星が見ている自然現象",
+      icon: "🛰️",
+      hook: `いま見える自然現象の約${Math.round((dominant[1] / Math.max(events.length, 1)) * 10)}割が${label}`,
       title: `いま目立つ自然現象は「${label}」`,
       summary: `NASAの公開データでは、直近30日の進行中イベント${events.length}件のうち、${dominant[1]}件が「${label}」に分類されています。`,
       background:
@@ -204,6 +217,8 @@ async function collectStories(): Promise<Story[]> {
   const maximum = Math.max(...values.slice(-180), 0);
   stories.push({
     genre: "宇宙から届いた変化",
+    icon: "☀️",
+    hook: maximum >= 5 ? "見えないところで、地球の磁場がざわざわ" : "宇宙はきょう、のんびりモード",
     title: maximum >= 5 ? "地球の磁場が少し荒れています" : "宇宙の天気は穏やかです",
     summary: `地球の磁場の乱れを表すKp指数は、直近約3時間の最大が${maximum.toFixed(1)}でした。Kpは0〜9で、数字が大きいほど磁場が乱れています。`,
     background:
@@ -242,12 +257,16 @@ export default async function Home() {
       </header>
 
       <section className="hero" id="top">
-        <p className="eyebrow">昨日と比べる、30秒の世界観測</p>
-        <h1>きょう、世界は<br /><em>ここが変わった。</em></h1>
+        <div className="tape">毎朝更新・自由研究みたいな世界ニュース</div>
+        <p className="eyebrow">きのうとくらべる、30秒の世界観察</p>
+        <h1>世界はきょう、<br /><em>こうなった！</em></h1>
         <p className="lead">
-          ニュースの重要度やジャンルは問いません。<br />
-          人の関心、地球、自然、宇宙から、昨日までとの違いが大きいものを3つだけ選びました。
+          むずかしいニュースは、いったん置いておこう。<br />
+          「へえ！」と思える世界の変化を、きょうも3つだけ観察しました。
         </p>
+        <div className="promise">
+          <span>① なにが？</span><span>② どれくらい？</span><span>③ どうして？</span>
+        </div>
         <nav className="jump" aria-label="今日の3項目">
           {stories.map((story, index) => (
             <a href={`#story-${index + 1}`} key={story.title}>
@@ -260,26 +279,32 @@ export default async function Home() {
       <section className="stories" aria-label="今日の変化3選">
         {stories.map((story, index) => (
           <article key={story.title} className={`story story-${index + 1}`} id={`story-${index + 1}`}>
-            <div className="story-number">0{index + 1}</div>
+            <div className="story-number"><small>観察</small>0{index + 1}</div>
             <div className="story-main">
-              <span className="genre">{story.genre}</span>
+              <span className="genre">{story.icon} {story.genre}</span>
               <h2>{story.title}</h2>
               {story.original && <p className="original">英語表記：{story.original}</p>}
+              <div className="discovery">
+                <span>きょうの発見！</span>
+                <strong>{story.hook}</strong>
+              </div>
               <p className="summary">{story.summary}</p>
               <div className="explain">
                 <div>
-                  <b>そもそも、これは何？</b>
+                  <b><i>1</i> そもそも、これは何？</b>
                   <p>{story.background}</p>
                 </div>
                 <div>
-                  <b>なぜ、きょう目立った？</b>
+                  <b><i>2</i> どうして目立った？</b>
                   <p>{story.whyNow}</p>
                 </div>
               </div>
+              <p className="compare-title">数字でくらべると…</p>
               <div className="change" aria-label="変化の比較">
                 <div><small>これまで・普段</small><b>{story.before}</b></div>
+                <div className="arrow" aria-hidden="true">→</div>
                 <div><small>きょう</small><b>{story.now}</b></div>
-                <div><small>変化</small><b>{story.change}</b></div>
+                <div className="answer"><small>つまり！</small><b>{story.change}</b></div>
               </div>
               <div className="foot">
                 <span>{story.note}</span>
@@ -291,8 +316,8 @@ export default async function Home() {
       </section>
 
       <section className="share">
-        <p>誰かに話したくなる変化、ありましたか？</p>
-        <h2>世界は毎日、派手じゃないところでも動いている。</h2>
+        <p>きょう、誰かに話したいのはどれ？</p>
+        <h2>「知ってた？」から、<br />会話をはじめよう。</h2>
         <a href={`https://twitter.com/intent/tweet?text=${shareText}`} target="_blank" rel="noreferrer">
           今日の3つをXで共有する ↗
         </a>
