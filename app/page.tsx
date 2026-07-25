@@ -4,6 +4,12 @@ type Story = {
   genre: string;
   icon: string;
   hook: string;
+  whatType: string;
+  meter: number;
+  meterLabel: string;
+  caution: string;
+  researchQuestion: string;
+  researchSteps: string[];
   title: string;
   original?: string;
   summary: string;
@@ -111,6 +117,12 @@ async function collectStories(): Promise<Story[]> {
       genre: "みんなが急に調べたもの",
       icon: "🔎",
       hook: rising.old ? `たった1日で、${rising.jump}人抜き！` : "きのうまで圏外、きょう急浮上！",
+      whatType: info.description || "人物・作品・場所などの注目項目",
+      meter: Math.max(8, Math.round((1 - rising.rank / Math.max(rising.old || 100, 1)) * 100)),
+      meterLabel: "前日順位から、どれだけ上がった？",
+      caution: "閲覧数が増えた理由は、順位データだけでは断定できません。ニュース、公開日、記念日などを別の資料で確かめる必要があります。",
+      researchQuestion: `なぜ「${info.title}」は、この日に急に調べられたのだろう？`,
+      researchSteps: ["名前をニュース検索する", "出来事の日付を時系列に並べる", "閲覧順位が上がった日と重ねる"],
       title: info.title,
       original,
       summary: info.summary,
@@ -148,6 +160,12 @@ async function collectStories(): Promise<Story[]> {
           : percent > 0
             ? `いつもより約${percent}%、よく揺れた`
             : `いつもより約${Math.abs(percent)}%、静かだった`,
+      whatType: "世界中で観測された地震の件数",
+      meter: Math.min(100, Math.round((dayQuakes.length / Math.max(dailyAverage, 1)) * 100)),
+      meterLabel: "1週間の日平均を100とすると",
+      caution: "件数が多い日ほど危険とは限りません。規模、深さ、震源地、人口密度によって影響は大きく変わります。",
+      researchQuestion: "地震の『多さ』と『被害の大きさ』は同じだろうか？",
+      researchSteps: ["件数と最大マグニチュードを記録する", "震源の深さと場所を地図で見る", "1週間続けて違いを比べる"],
       title: "世界の地震、きょうは多い？少ない？",
       summary: `直近24時間に世界で${dayQuakes.length}件の地震が観測されました。最大は${strongest.properties.place}付近のマグニチュード${strongest.properties.mag?.toFixed(1)}です。`,
       background:
@@ -196,6 +214,12 @@ async function collectStories(): Promise<Story[]> {
       genre: "衛星が見ている自然現象",
       icon: "🛰️",
       hook: `いま見える自然現象の約${Math.round((dominant[1] / Math.max(events.length, 1)) * 10)}割が${label}`,
+      whatType: "衛星で追跡中の自然現象",
+      meter: Math.round((dominant[1] / Math.max(events.length, 1)) * 100),
+      meterLabel: `進行中イベントに占める${label}の割合`,
+      caution: "NASA EONETに登録された件数の比較です。世界で起きた全ての自然現象を数えたものではありません。",
+      researchQuestion: `なぜ今、${label}がほかの自然現象より多く見えているのだろう？`,
+      researchSteps: ["発生地点を世界地図に印をつける", "季節や気温との関係を調べる", "1か月後に同じ分類をもう一度数える"],
       title: `いま目立つ自然現象は「${label}」`,
       summary: `NASAの公開データでは、直近30日の進行中イベント${events.length}件のうち、${dominant[1]}件が「${label}」に分類されています。`,
       background:
@@ -219,6 +243,12 @@ async function collectStories(): Promise<Story[]> {
     genre: "宇宙から届いた変化",
     icon: "☀️",
     hook: maximum >= 5 ? "見えないところで、地球の磁場がざわざわ" : "宇宙はきょう、のんびりモード",
+    whatType: "太陽の影響で変化する地球の磁場",
+    meter: Math.min(100, Math.round((maximum / 9) * 100)),
+    meterLabel: "最大9のKp指数に対する現在値",
+    caution: "Kp指数が少し上がっただけで、生活へすぐ影響が出るわけではありません。公式の警報とは分けて見ます。",
+    researchQuestion: "Kp指数が上がると、オーロラの見える場所はどう変わる？",
+    researchSteps: ["毎日の最大Kp指数を記録する", "オーロラの報告地点を調べる", "太陽活動との時間差を比べる"],
     title: maximum >= 5 ? "地球の磁場が少し荒れています" : "宇宙の天気は穏やかです",
     summary: `地球の磁場の乱れを表すKp指数は、直近約3時間の最大が${maximum.toFixed(1)}でした。Kpは0〜9で、数字が大きいほど磁場が乱れています。`,
     background:
@@ -288,17 +318,22 @@ export default async function Home() {
                 <span>きょうの発見！</span>
                 <strong>{story.hook}</strong>
               </div>
-              <p className="summary">{story.summary}</p>
-              <div className="explain">
-                <div>
-                  <b><i>1</i> そもそも、これは何？</b>
-                  <p>{story.background}</p>
+              <div className="visual-summary">
+                <div className="type-card">
+                  <small>これは何？</small>
+                  <strong>{story.whatType}</strong>
                 </div>
-                <div>
-                  <b><i>2</i> どうして目立った？</b>
-                  <p>{story.whyNow}</p>
+                <div className="meter-card">
+                  <small>{story.meterLabel}</small>
+                  <div className="meter-row">
+                    <div className="meter" aria-label={`${story.meter}%`}>
+                      <span style={{ width: `${Math.max(5, Math.min(100, story.meter))}%` }} />
+                    </div>
+                    <b>{story.meter}%</b>
+                  </div>
                 </div>
               </div>
+              <p className="summary">{story.summary}</p>
               <p className="compare-title">数字でくらべると…</p>
               <div className="change" aria-label="変化の比較">
                 <div><small>これまで・普段</small><b>{story.before}</b></div>
@@ -310,6 +345,28 @@ export default async function Home() {
                 <span>{story.note}</span>
                 <a href={story.source} target="_blank" rel="noreferrer">{story.sourceLabel} ↗</a>
               </div>
+              <details className="deep">
+                <summary>もっと深く調べる ＋</summary>
+                <div className="deep-grid">
+                  <section>
+                    <span>どうして目立った？</span>
+                    <p>{story.whyNow}</p>
+                  </section>
+                  <section>
+                    <span>知っておきたい背景</span>
+                    <p>{story.background}</p>
+                  </section>
+                  <section className="caution">
+                    <span>ここは注意！</span>
+                    <p>{story.caution}</p>
+                  </section>
+                </div>
+              </details>
+              <aside className="research">
+                <div className="research-head"><span>夏休みの課題研究に</span><b>この問いを調べてみよう</b></div>
+                <h3>{story.researchQuestion}</h3>
+                <ol>{story.researchSteps.map(step => <li key={step}>{step}</li>)}</ol>
+              </aside>
             </div>
           </article>
         ))}
@@ -332,6 +389,18 @@ export default async function Home() {
           「確認できたこと」と「考えられること」を分けて紹介します。
         </p>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "ODD HOURS",
+            description: "昨日と今日を比べ、世界の変化を3つだけ観察する学習サイト",
+            inLanguage: "ja",
+          }),
+        }}
+      />
 
       <footer>
         <b>ODD HOURS</b>
