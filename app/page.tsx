@@ -385,7 +385,7 @@ export default async function Home() {
     <main>
       <header>
         <a href="#top" className="logo">ODD HOURS</a>
-        <span>{stamp}号</span>
+        <div className="header-actions"><a href="/archive">あの日の世界</a><span>{stamp}号</span></div>
       </header>
 
       <section className="hero" id="top">
@@ -475,6 +475,15 @@ export default async function Home() {
             </div>
           </article>
         ))}
+      </section>
+
+      <section className="archive-invite">
+        <div>
+          <span>NEW・世界の観察日記</span>
+          <h2>「あの日は何があった？」を<br />日付から探せます。</h2>
+          <p>年・月・日を選ぶと、その日の注目、地球の動き、自然現象、宇宙天気を10個の発見で振り返れます。</p>
+        </div>
+        <a href="/archive"><b>2026</b><strong>過去の日付から見る →</strong><small>記録開始：7月25日</small></a>
       </section>
 
       <section className="share">
