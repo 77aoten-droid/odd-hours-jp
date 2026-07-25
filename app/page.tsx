@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 type Story = {
   genre: string;
@@ -27,9 +27,9 @@ type Story = {
 async function getJson(url: string) {
   try {
     const response = await fetch(url, {
-      cache: "no-store",
+      next: { revalidate: 3600 },
       headers: { "User-Agent": "ODD-HOURS/3.0 (daily public-data digest)" },
-    });
+    } as RequestInit & { next: { revalidate: number } });
     return response.ok ? await response.json() : null;
   } catch {
     return null;
@@ -141,6 +141,45 @@ async function collectStories(): Promise<Story[]> {
     });
   }
 
+  const extraRisers = current
+    .map((item: any, index: number) => ({
+      ...item,
+      rank: index + 1,
+      old: oldRanks.get(item.article) as number | undefined,
+    }))
+    .map((item: any) => ({ ...item, jump: item.old ? item.old - item.rank : 100 - item.rank }))
+    .sort((a: any, b: any) => b.jump - a.jump)
+    .slice(1, 4);
+  const extraWikiDetails = await Promise.all(extraRisers.map((item: any) => wikiDetails(item.article)));
+  extraRisers.forEach((item: any, index: number) => {
+    const info = extraWikiDetails[index];
+    stories.push({
+      genre: "みんなが急に調べたもの",
+      icon: ["🎬", "👤", "📚"][index] || "🔎",
+      hook: item.old ? `前日から${item.jump}位もジャンプ！` : "突然、世界の注目が集まった",
+      whatType: info.description || "人物・作品・場所などの注目項目",
+      meter: Math.max(8, Math.round((1 - item.rank / Math.max(item.old || 100, 1)) * 100)),
+      meterLabel: "前日順位から、どれだけ上がった？",
+      caution: "検索順位の上昇だけでは、注目された原因は断定できません。複数のニュースや日付を照らし合わせます。",
+      researchQuestion: `なぜ「${info.title}」は、この日に世界から注目されたのだろう？`,
+      researchSteps: ["名前と日付を一緒に検索する", "複数の記事に共通する出来事を探す", "閲覧順位の変化と時系列を重ねる"],
+      title: info.title,
+      original: info.title !== info.original ? info.original : undefined,
+      summary: info.summary,
+      background: info.description
+        ? `${info.title}は「${info.description}」として紹介されている項目です。人物・作品・場所のどれなのかを、まずここで確認します。`
+        : "英語版Wikipediaで、前日より閲覧順位が大きく上がった項目です。",
+      whyNow: `前日の${item.old || "上位圏外"}から${item.rank}位へ上昇しました。関連報道や公開日などが考えられますが、順位だけでは原因を断定できません。`,
+      before: item.old ? `${item.old}位` : "上位圏外",
+      now: `${item.rank}位`,
+      change: item.old ? `${item.jump}位アップ` : "急上昇",
+      source: `https://en.wikipedia.org/wiki/${encodeURIComponent(item.article)}`,
+      sourceLabel: "元データと詳細を見る",
+      score: Math.min(94, 45 + item.jump),
+      note: `${Number(item.views || 0).toLocaleString("ja-JP")}回閲覧`,
+    });
+  });
+
   const dayQuakes = quakeDay?.features || [];
   const weekQuakes = quakeWeek?.features || [];
   const dailyAverage = weekQuakes.length / 7 || dayQuakes.length || 1;
@@ -186,6 +225,32 @@ async function collectStories(): Promise<Story[]> {
         Math.round(35 + Math.abs(percent) + (strongest.properties.mag || 0) * 5),
       ),
       note: "危険度ではなく活動量の変化",
+    });
+  }
+
+  if (strongest) {
+    const magnitude = Number(strongest.properties.mag || 0);
+    stories.push({
+      genre: "24時間で最大の地震",
+      icon: "📍",
+      hook: `最大はマグニチュード${magnitude.toFixed(1)}`,
+      whatType: "直近24時間で最も規模が大きかった地震",
+      meter: Math.min(100, Math.round((magnitude / 9) * 100)),
+      meterLabel: "マグニチュード9を100とした目安",
+      caution: "マグニチュードは地震そのものの規模です。各地で感じる揺れの強さを表す震度とは異なります。",
+      researchQuestion: "マグニチュードと震度は、どう違うのだろう？",
+      researchSteps: ["地震の規模と揺れ方の定義を調べる", "震源の深さと距離を確認する", "同じ規模でも震度が違う例を比べる"],
+      title: `きょう最大の地震は、${strongest.properties.place}付近`,
+      summary: `直近24時間で最大だったのは、${strongest.properties.place}付近で観測されたマグニチュード${magnitude.toFixed(1)}の地震です。`,
+      background: "USGSが世界中の観測点からまとめている地震記録です。場所、深さ、時刻、規模を確認できます。",
+      whyNow: "直近24時間の観測記録をマグニチュード順に並べ、最上位の地震を取り上げました。",
+      before: "M5.0",
+      now: `M${magnitude.toFixed(1)}`,
+      change: `+${Math.max(0, magnitude - 5).toFixed(1)}`,
+      source: strongest.properties.url,
+      sourceLabel: "震源と詳細を見る",
+      score: Math.round(32 + magnitude * 6),
+      note: "規模と被害は同じ意味ではありません",
     });
   }
 
@@ -235,6 +300,36 @@ async function collectStories(): Promise<Story[]> {
     });
   }
 
+  const extraCategories = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(1, 3);
+  extraCategories.forEach(([category, count], index) => {
+    const label = categoryJa[category] || category;
+    const share = Math.round((count / Math.max(events.length, 1)) * 100);
+    stories.push({
+      genre: "衛星が見ている自然現象",
+      icon: index === 0 ? "🌋" : "🌪️",
+      hook: `世界で追跡中の「${label}」は${count}件`,
+      whatType: `NASAが追跡している${label}`,
+      meter: share,
+      meterLabel: `進行中イベントに占める${label}の割合`,
+      caution: "登録数は観測条件やデータ更新の影響を受けます。実際に発生した全件を表す数字ではありません。",
+      researchQuestion: `${label}は世界のどの地域に集まっているのだろう？`,
+      researchSteps: ["発生地点を地図に印をつける", "緯度や季節の共通点を探す", "別の月と件数を比べる"],
+      title: `衛星が追う「${label}」、いま世界で${count}件`,
+      summary: `NASA EONETに登録された直近30日の進行中イベントでは、「${label}」が${count}件あります。全体の約${share}%です。`,
+      background: `人工衛星などで確認された自然現象のうち、「${label}」に分類された進行中イベントです。`,
+      whyNow: `現在のNASA EONETデータを分類別に数え、件数が上位になったため選びました。`,
+      before: "分類平均",
+      now: `${count}件`,
+      change: `全体の${share}%`,
+      source: "https://eonet.gsfc.nasa.gov/",
+      sourceLabel: "NASAの地図を見る",
+      score: 38 - index,
+      note: "NASA EONETの進行中イベント",
+    });
+  });
+
   const rows = kp || [];
   const values = rows.map((row: any) => Number(row.kp_index) || 0);
   const average = values.reduce((sum: number, value: number) => sum + value, 0) / Math.max(values.length, 1);
@@ -266,7 +361,14 @@ async function collectStories(): Promise<Story[]> {
     note: "Kp指数の平均との差",
   });
 
-  return stories.sort((a, b) => b.score - a.score).slice(0, 3);
+  const sorted = stories.sort((a, b) => b.score - a.score);
+  const top: Story[] = [];
+  for (const story of sorted) {
+    if (!top.some(item => item.genre === story.genre)) top.push(story);
+    if (top.length === 3) break;
+  }
+  const rest = sorted.filter(story => !top.includes(story));
+  return [...top, ...rest].slice(0, 10);
 }
 
 export default async function Home() {
@@ -292,12 +394,12 @@ export default async function Home() {
         <h1>世界はきょう、<br /><em>こうなった！</em></h1>
         <p className="lead">
           むずかしいニュースは、いったん置いておこう。<br />
-          「へえ！」と思える世界の変化を、きょうも3つだけ観察しました。
+          まずは大きな変化を3つ。もっと見たい人には、あと7つ用意しました。
         </p>
         <div className="promise">
           <span>① なにが？</span><span>② どれくらい？</span><span>③ どうして？</span>
         </div>
-        <nav className="jump" aria-label="今日の3項目">
+        <nav className="jump" aria-label="今日の10項目">
           {stories.map((story, index) => (
             <a href={`#story-${index + 1}`} key={story.title}>
               <b>0{index + 1}</b><span>{story.title}</span>
@@ -306,11 +408,14 @@ export default async function Home() {
         </nav>
       </section>
 
-      <section className="stories" aria-label="今日の変化3選">
+      <section className="stories" aria-label="今日の変化10選">
         {stories.map((story, index) => (
           <article key={story.title} className={`story story-${index + 1}`} id={`story-${index + 1}`}>
             <div className="story-number"><small>観察</small>0{index + 1}</div>
             <div className="story-main">
+              <span className={`tier ${index < 3 ? "top" : "more"}`}>
+                {index < 3 ? "今日のベスト3" : "もっと見る7選"}
+              </span>
               <span className="genre">{story.icon} {story.genre}</span>
               <h2>{story.title}</h2>
               {story.original && <p className="original">英語表記：{story.original}</p>}
