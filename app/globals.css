@@ -71,6 +71,10 @@ header{height:64px;padding:0 clamp(18px,5vw,72px);display:flex;justify-content:s
 .game-radar-head>div>span{display:inline-block;background:var(--ink);color:white;padding:7px 10px;font:900 10px Arial;letter-spacing:.08em;transform:rotate(-2deg)}
 .game-radar h2{font:900 clamp(38px,5vw,68px)/1.15 "Yu Gothic";letter-spacing:-.055em;margin:20px 0 0}
 .game-radar-head>p{max-width:430px;font-size:14px;font-weight:750;line-height:1.9}
+.game-radar-poster{max-width:1150px;margin:38px 0 0;border:3px solid var(--ink);border-radius:20px;overflow:hidden;background:var(--paper);box-shadow:8px 8px 0 var(--ink);transform:rotate(-.35deg)}
+.game-radar-poster img{display:block;width:100%;height:auto;aspect-ratio:1672/939;object-fit:cover}
+.game-radar-poster figcaption{display:flex;justify-content:space-between;gap:22px;align-items:center;padding:15px 20px;border-top:3px solid var(--ink);background:var(--yellow)}
+.game-radar-poster figcaption b{font:900 12px Arial;letter-spacing:.08em}.game-radar-poster figcaption span{font-size:12px;font-weight:800}
 .game-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1150px;margin-top:40px}
 .game-card{overflow:hidden;background:var(--paper);border:3px solid var(--ink);border-radius:18px;box-shadow:7px 7px 0 var(--ink)}
 .game-image{position:relative;aspect-ratio:616/270;overflow:hidden;border-bottom:3px solid var(--ink);background:#ddd}
@@ -92,6 +96,9 @@ header{height:64px;padding:0 clamp(18px,5vw,72px);display:flex;justify-content:s
 @media(max-width:720px){
   .game-radar{padding-top:52px;padding-bottom:58px}
   .game-radar-head{display:block}.game-radar-head>p{margin-top:20px}
+  .game-radar-poster{margin-top:28px;border-radius:13px;box-shadow:5px 5px 0 var(--ink)}
+  .game-radar-poster figcaption{display:block;padding:13px 15px}
+  .game-radar-poster figcaption span{display:block;margin-top:6px;line-height:1.6}
   .game-grid{grid-template-columns:1fr}
   .game-body dl{grid-template-columns:1fr}
   .platform-notes{grid-template-columns:1fr}

@@ -688,6 +688,16 @@ export default async function Home() {
             <strong>有料ゲームは国内売上順位</strong>を中心に観測します。
           </p>
         </div>
+        <figure className="game-radar-poster">
+          <img
+            src="/og-game-radar.png"
+            alt="ODD HOURS GAME RADAR 今日、どのゲームが動いた？ 無料ゲームと有料ゲームの注目度を観察"
+          />
+          <figcaption>
+            <b>GAME RADAR</b>
+            <span>人気順ではなく、「今日数字が動いたゲーム」を見つける観測所。</span>
+          </figcaption>
+        </figure>
         <div className="game-grid">
           {games.map((game) => (
             <article className={`game-card ${game.kind}`} key={game.appId}>
