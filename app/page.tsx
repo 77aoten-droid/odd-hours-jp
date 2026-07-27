@@ -134,6 +134,18 @@ function meaningFor(story: Story) {
   if (/Cockroach Janta Party/i.test(story.title)) {
     return "「ゴキブリ人民党」。インドの若者が始めた、風刺と抗議を組み合わせた政治運動です。";
   }
+  if (story.source.includes("earthquake.usgs.gov") && story.genre === "地球の動き") {
+    return "世界で24時間以内に観測された地震の総数です。被害件数や危険度ではありません。";
+  }
+  if (story.source.includes("earthquake.usgs.gov")) {
+    return "直近24時間に観測された地震のうち、マグニチュードが最も大きかった1件です。";
+  }
+  if (story.source.includes("eonet.gsfc.nasa.gov")) {
+    return `${story.title}。NASAが衛星などで追跡し、現在進行中として登録した自然現象です。`;
+  }
+  if (story.source.includes("swpc.noaa.gov")) {
+    return "太陽活動による地球の磁場の乱れを表す「Kp指数」です。0に近いほど穏やかで、9に近いほど強い乱れです。";
+  }
   if (story.original) return `${story.title}。英語名は「${story.original}」で、${story.whatType}です。`;
   return `${story.title}は、${story.whatType}を扱う項目です。`;
 }
@@ -152,7 +164,27 @@ function resultReasonFor(story: Story) {
   if (story.source.includes("wikipedia.org")) {
     return "閲覧順位は上がりましたが、対応する報道を確認できませんでした。原因は不明です。";
   }
+  if (story.source.includes("earthquake.usgs.gov") && story.genre === "地球の動き") {
+    return "地震件数は、小さな地震や余震がまとまって起きるだけでも増減します。現在のフィードだけでは、世界全体の増減を一つの原因に結びつけられません。";
+  }
+  if (story.source.includes("earthquake.usgs.gov")) {
+    return "直近24時間の全記録をマグニチュード順に並べた結果です。最大だったという意味で、最も被害が大きい地震という意味ではありません。";
+  }
+  if (story.source.includes("eonet.gsfc.nasa.gov")) {
+    return "直近30日に登録され、現在も進行中のイベントを分類した結果です。季節、現象の継続期間、衛星での見つけやすさ、登録方法の影響を受けます。";
+  }
+  if (story.source.includes("swpc.noaa.gov")) {
+    return "NOAAが観測した直近のKp指数が低いためです。太陽から大きな影響が届いていない、比較的穏やかな磁場の状態を示します。";
+  }
   return story.whyNow;
+}
+
+function themeFor(story: Story) {
+  if (story.source.includes("earthquake.usgs.gov") && story.genre === "地球の動き") return "地震の発生件数／地球全体の活動量";
+  if (story.source.includes("earthquake.usgs.gov")) return "地震の規模／震源地域";
+  if (story.source.includes("eonet.gsfc.nasa.gov")) return "衛星で追跡する自然現象／地域分布";
+  if (story.source.includes("swpc.noaa.gov")) return "太陽活動／地球の磁場／宇宙天気";
+  return `${story.genre}／${story.whatType}`;
 }
 
 async function translateToJapanese(text: string) {
@@ -300,6 +332,9 @@ async function collectStories(): Promise<Story[]> {
   const strongest = [...dayQuakes].sort(
     (a: any, b: any) => (b.properties.mag || 0) - (a.properties.mag || 0),
   )[0];
+  const strongestPlaceJa = strongest
+    ? (await translateToJapanese(strongest.properties.place)) || strongest.properties.place
+    : "";
   const difference = dayQuakes.length - dailyAverage;
   const percent = Math.round((difference / dailyAverage) * 100);
 
@@ -320,7 +355,7 @@ async function collectStories(): Promise<Story[]> {
       researchQuestion: "地震の『多さ』と『被害の大きさ』は同じだろうか？",
       researchSteps: ["件数と最大マグニチュードを記録する", "震源の深さと場所を地図で見る", "1週間続けて違いを比べる"],
       title: "世界の地震、きょうは多い？少ない？",
-      summary: `直近24時間に世界で${dayQuakes.length}件の地震が観測されました。最大は${strongest.properties.place}付近のマグニチュード${strongest.properties.mag?.toFixed(1)}です。`,
+      summary: `直近24時間に世界で${dayQuakes.length}件の地震が観測されました。最大は${strongestPlaceJa}付近のマグニチュード${strongest.properties.mag?.toFixed(1)}です。`,
       background:
         "米国地質調査所（USGS）が公開する世界の観測記録です。ここで数えているのは報告された地震の件数で、被害の大きさや日本への危険度を示す数字ではありません。",
       whyNow:
@@ -354,8 +389,8 @@ async function collectStories(): Promise<Story[]> {
       caution: "マグニチュードは地震そのものの規模です。各地で感じる揺れの強さを表す震度とは異なります。",
       researchQuestion: "マグニチュードと震度は、どう違うのだろう？",
       researchSteps: ["地震の規模と揺れ方の定義を調べる", "震源の深さと距離を確認する", "同じ規模でも震度が違う例を比べる"],
-      title: `きょう最大の地震は、${strongest.properties.place}付近`,
-      summary: `直近24時間で最大だったのは、${strongest.properties.place}付近で観測されたマグニチュード${magnitude.toFixed(1)}の地震です。`,
+      title: `きょう最大の地震は、${strongestPlaceJa}付近`,
+      summary: `直近24時間で最大だったのは、${strongestPlaceJa}付近で観測されたマグニチュード${magnitude.toFixed(1)}の地震です。`,
       background: "USGSが世界中の観測点からまとめている地震記録です。場所、深さ、時刻、規模を確認できます。",
       whyNow: "直近24時間の観測記録をマグニチュード順に並べ、最上位の地震を取り上げました。",
       before: "M5.0",
@@ -566,7 +601,7 @@ export default async function Home() {
                 <div className="meaning"><small>日本語ではどういう意味？</small><p>{meaningFor(story)}</p></div>
                 <div><small>地域・対象範囲</small><strong>{regionFor(story)}</strong></div>
                 <div><small>{story.source.includes("wikipedia.org") ? "アクセス数" : "観測値"}</small><strong>{metricFor(story)}</strong></div>
-                <div><small>テーマ</small><strong>{story.genre}／{story.whatType}</strong></div>
+                <div><small>テーマ</small><strong>{themeFor(story)}</strong></div>
               </section>
               <section className="quick-answer">
                 <div><small>なぜピックアップ？</small><h3>{story.hook}</h3><p>{story.whyNow}</p></div>
