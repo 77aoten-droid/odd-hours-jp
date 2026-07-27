@@ -111,6 +111,50 @@ function sourceInJapanese(story: Story) {
   return "NOAA宇宙天気予報センターのKp指数です。このサイトでは地球の磁場の乱れを0〜9の日本語の目安に直して説明しています。";
 }
 
+function regionFor(story: Story) {
+  const text = `${story.title} ${story.summary} ${story.background}`;
+  const regions: [RegExp, string][] = [
+    [/インド|Indian|New Delhi|ニューデリー/i, "インド（主な出来事はニューデリー）"],
+    [/ギリシャ|Greek|Greece/i, "ギリシャ"],
+    [/Alaska|アラスカ/i, "米国・アラスカ周辺"],
+    [/Vanuatu|バヌアツ/i, "バヌアツ周辺"],
+    [/Argentina|アルゼンチン|Ushuaia/i, "アルゼンチン南方"],
+    [/アメリカ|American|United States/i, "米国"],
+    [/Scotland|Glasgow|スコットランド|グラスゴー/i, "英国・スコットランド"],
+  ];
+  const match = regions.find(([pattern]) => pattern.test(text));
+  if (match) return match[1];
+  if (story.source.includes("earthquake.usgs.gov")) return "世界全体／記載された震源周辺";
+  if (story.source.includes("eonet.gsfc.nasa.gov")) return "世界全体";
+  if (story.source.includes("swpc.noaa.gov")) return "地球周辺の宇宙空間";
+  return "地域別アクセスは取得できません（英語版Wikipedia全体）";
+}
+
+function meaningFor(story: Story) {
+  if (/Cockroach Janta Party/i.test(story.title)) {
+    return "「ゴキブリ人民党」。インドの若者が始めた、風刺と抗議を組み合わせた政治運動です。";
+  }
+  if (story.original) return `${story.title}。英語名は「${story.original}」で、${story.whatType}です。`;
+  return `${story.title}は、${story.whatType}を扱う項目です。`;
+}
+
+function metricFor(story: Story) {
+  return story.source.includes("wikipedia.org")
+    ? `${story.note}（英語版Wikipedia全体）`
+    : `${story.now}（${story.note}）`;
+}
+
+function resultReasonFor(story: Story) {
+  const news = story.relatedNews?.[0];
+  if (news) {
+    return `同じ時期に「${news.headline}」と報じられました。順位上昇との関係は有力な手がかりですが、直接原因とまでは断定していません。`;
+  }
+  if (story.source.includes("wikipedia.org")) {
+    return "閲覧順位は上がりましたが、対応する報道を確認できませんでした。原因は不明です。";
+  }
+  return story.whyNow;
+}
+
 async function translateToJapanese(text: string) {
   if (!text) return "";
   const data = await getJson(
@@ -518,75 +562,17 @@ export default async function Home() {
               <span className="genre">{story.icon} {story.genre}</span>
               <h2>{story.title}</h2>
               {story.original && <p className="original">英語表記：{story.original}</p>}
-              <div className="discovery">
-                <span>きょうの発見！</span>
-                <strong>{story.hook}</strong>
-              </div>
-              <div className="visual-summary">
-                <div className="type-card">
-                  <small>これは何？</small>
-                  <strong>{story.whatType}</strong>
-                </div>
-                <div className="meter-card">
-                  <small>{story.meterLabel}</small>
-                  <div className="meter-row">
-                    <div className="meter" aria-label={`${story.meter}%`}>
-                      <span style={{ width: `${Math.max(5, Math.min(100, story.meter))}%` }} />
-                    </div>
-                    <b>{story.meter}%</b>
-                  </div>
-                </div>
-              </div>
-              <section className="complete-explainer" aria-label={`${story.title}の日本語解説`}>
-                <div className="explainer-main">
-                  <small>何が起きた？</small>
-                  <p>{story.summary}</p>
-                </div>
-                <div>
-                  <small>なぜ今日、載せた？</small>
-                  <p>{story.whyNow}</p>
-                </div>
-                <div className="source-ja">
-                  <small>元データを日本語でいうと</small>
-                  <p>{sourceInJapanese(story)}</p>
-                </div>
+              <section className="quick-profile" aria-label={`${story.title}の要点`}>
+                <div className="meaning"><small>日本語ではどういう意味？</small><p>{meaningFor(story)}</p></div>
+                <div><small>地域・対象範囲</small><strong>{regionFor(story)}</strong></div>
+                <div><small>{story.source.includes("wikipedia.org") ? "アクセス数" : "観測値"}</small><strong>{metricFor(story)}</strong></div>
+                <div><small>テーマ</small><strong>{story.genre}／{story.whatType}</strong></div>
               </section>
-              <section className="evidence-report" aria-label="確からしさと関連報道">
-                <div className="evidence-head">
-                  <div>
-                    <span className="evidence-badge confirmed">確認済み</span>
-                    <b>観測値と順位変化</b>
-                  </div>
-                  <div>
-                    <span className={`evidence-badge ${story.relatedNews?.length ? "possible" : "unknown"}`}>
-                      {story.relatedNews?.length ? "関連の可能性" : story.source.includes("wikipedia.org") ? "原因不明" : "一次データで完結"}
-                    </span>
-                    <b>{story.relatedNews?.length ? "同じ時期の報道" : story.source.includes("wikipedia.org") ? "急上昇の直接原因" : "今回使った観測情報"}</b>
-                  </div>
+              <section className="quick-answer">
+                <div><small>なぜピックアップ？</small><h3>{story.hook}</h3><p>{story.whyNow}</p></div>
+                <div className={story.relatedNews?.length ? "reason-possible" : "reason-unknown"}>
+                  <small>なぜこの結果になった？</small><p>{resultReasonFor(story)}</p>
                 </div>
-                {story.relatedNews?.length ? (
-                  <>
-                    <div className="evidence-intro">
-                      <strong>この時期、何が報じられた？</strong>
-                      <p>同じ名前を含む直近3日間の報道です。時期が重なっていても、閲覧急上昇の原因だと証明されたわけではありません。</p>
-                    </div>
-                    <ol className="news-timeline">
-                      {story.relatedNews.map((news, newsIndex) => (
-                        <li key={`${news.url}-${newsIndex}`}>
-                          <time>{news.date}</time>
-                          <div><small>{news.source}</small><p>{news.headline}</p></div>
-                          {news.url && <a href={news.url} target="_blank" rel="noreferrer" aria-label={`${news.headline}の報道を確認`}>確認 ↗</a>}
-                        </li>
-                      ))}
-                    </ol>
-                  </>
-                ) : (
-                  <p className="no-news">
-                    {story.source.includes("wikipedia.org")
-                      ? "一次データだけでは、なぜこの日に検索が増えたのか確認できませんでした。分からない原因は、推測で埋めません。"
-                      : "この項目は観測機関が公開した数値・場所・分類の範囲で説明しています。別の出来事との因果関係は示していません。"}
-                  </p>
-                )}
               </section>
               <p className="compare-title">数字でくらべると…</p>
               <div className="change" aria-label="変化の比較">
@@ -600,17 +586,35 @@ export default async function Home() {
                 <a href={story.source} target="_blank" rel="noreferrer">一次ソース原文を確認する ↗</a>
               </div>
               <details className="deep">
-                <summary>もっと深く調べる ＋</summary>
+                <summary>根拠と詳しい解説を見る ＋</summary>
                 <div className="deep-grid">
                   <section>
                     <span>知っておきたい背景</span>
                     <p>{story.background}</p>
+                  </section>
+                  <section>
+                    <span>元データを日本語でいうと</span>
+                    <p>{sourceInJapanese(story)}</p>
                   </section>
                   <section className="caution">
                     <span>ここは注意！</span>
                     <p>{story.caution}</p>
                   </section>
                 </div>
+                {story.relatedNews?.length ? (
+                  <div className="evidence-detail">
+                    <p>同じ名前を含む直近3日間の報道です。時期が重なっていても、アクセス増加の原因と証明されたわけではありません。</p>
+                    <ol className="news-timeline">
+                      {story.relatedNews.map((news, newsIndex) => (
+                        <li key={`${news.url}-${newsIndex}`}>
+                          <time>{news.date}</time>
+                          <div><small>{news.source}</small><p>{news.headline}</p></div>
+                          {news.url && <a href={news.url} target="_blank" rel="noreferrer">確認 ↗</a>}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
               </details>
               <aside className="research">
                 <div className="research-head"><span>夏休みの課題研究に</span><b>この問いを調べてみよう</b></div>
