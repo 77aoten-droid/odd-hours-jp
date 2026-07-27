@@ -49,6 +49,19 @@ function normalWiki(article: string) {
   return !/^(Main_Page|Special:|Wikipedia:|File:|Portal:|Cookie)/.test(article);
 }
 
+function sourceInJapanese(story: Story) {
+  if (story.source.includes("wikipedia.org")) {
+    return `Wikimediaが集計した英語版Wikipediaの閲覧順位と閲覧回数です。このサイトでは項目名・人物や作品の概要・前日からの順位変化を日本語にして掲載しています。`;
+  }
+  if (story.source.includes("earthquake.usgs.gov")) {
+    return "米国地質調査所（USGS）の観測記録です。このサイトでは場所、規模、24時間件数、7日平均との違いを日本語で整理しています。";
+  }
+  if (story.source.includes("eonet.gsfc.nasa.gov")) {
+    return "NASA EONETの進行中イベントです。このサイトでは英語の分類名と主な登録例を日本語にし、直近30日の件数として整理しています。";
+  }
+  return "NOAA宇宙天気予報センターのKp指数です。このサイトでは地球の磁場の乱れを0〜9の日本語の目安に直して説明しています。";
+}
+
 async function translateToJapanese(text: string) {
   if (!text) return "";
   const data = await getJson(
@@ -116,7 +129,9 @@ async function collectStories(): Promise<Story[]> {
     stories.push({
       genre: "みんなが急に調べたもの",
       icon: "🔎",
-      hook: rising.old ? `たった1日で、${rising.jump}人抜き！` : "きのうまで圏外、きょう急浮上！",
+      hook: rising.old
+        ? `英語版Wikipediaで、前日${rising.old}位から今日${rising.rank}位へ`
+        : `英語版Wikipediaで、前日の上位圏外から今日${rising.rank}位へ`,
       whatType: info.description || "人物・作品・場所などの注目項目",
       meter: Math.max(8, Math.round((1 - rising.rank / Math.max(rising.old || 100, 1)) * 100)),
       meterLabel: "前日順位から、どれだけ上がった？",
@@ -156,7 +171,9 @@ async function collectStories(): Promise<Story[]> {
     stories.push({
       genre: "みんなが急に調べたもの",
       icon: ["🎬", "👤", "📚"][index] || "🔎",
-      hook: item.old ? `前日から${item.jump}位もジャンプ！` : "突然、世界の注目が集まった",
+      hook: item.old
+        ? `英語版Wikipediaで、前日${item.old}位から今日${item.rank}位へ`
+        : `英語版Wikipediaで、前日の上位圏外から今日${item.rank}位へ`,
       whatType: info.description || "人物・作品・場所などの注目項目",
       meter: Math.max(8, Math.round((1 - item.rank / Math.max(item.old || 100, 1)) * 100)),
       meterLabel: "前日順位から、どれだけ上がった？",
@@ -271,6 +288,17 @@ async function collectStories(): Promise<Story[]> {
     Drought: "干ばつ",
     DustHaze: "砂じん・煙霧",
   };
+  const rankedCategories = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const categoryExamples = new Map<string, string>(
+    await Promise.all(rankedCategories.slice(0, 3).map(async ([category]) => {
+      const titles = events
+        .filter((event: any) => event.categories?.some((item: any) => item.title === category))
+        .slice(0, 3)
+        .map((event: any) => event.title)
+        .join("、");
+      return [category, (await translateToJapanese(titles)) || titles] as [string, string];
+    })),
+  );
 
   if (dominant) {
     const average = Math.round(events.length / Math.max(counts.size, 1));
@@ -286,7 +314,7 @@ async function collectStories(): Promise<Story[]> {
       researchQuestion: `なぜ今、${label}がほかの自然現象より多く見えているのだろう？`,
       researchSteps: ["発生地点を世界地図に印をつける", "季節や気温との関係を調べる", "1か月後に同じ分類をもう一度数える"],
       title: `いま目立つ自然現象は「${label}」`,
-      summary: `NASAの公開データでは、直近30日の進行中イベント${events.length}件のうち、${dominant[1]}件が「${label}」に分類されています。`,
+      summary: `NASAの公開データでは、直近30日の進行中イベント${events.length}件のうち、${dominant[1]}件が「${label}」に分類されています。主な登録例は「${categoryExamples.get(dominant[0]) || "取得できませんでした"}」です。`,
       background:
         "NASA EONETは、山火事・火山・嵐・洪水など、衛星画像で追跡できる自然現象を世界規模で整理した公開データです。",
       whyNow: `全カテゴリーの単純平均${average}件に対して${dominant[1]}件まで集中しており、いまの観測画面で最も目立っています。`,
@@ -317,7 +345,7 @@ async function collectStories(): Promise<Story[]> {
       researchQuestion: `${label}は世界のどの地域に集まっているのだろう？`,
       researchSteps: ["発生地点を地図に印をつける", "緯度や季節の共通点を探す", "別の月と件数を比べる"],
       title: `衛星が追う「${label}」、いま世界で${count}件`,
-      summary: `NASA EONETに登録された直近30日の進行中イベントでは、「${label}」が${count}件あります。全体の約${share}%です。`,
+      summary: `NASA EONETに登録された直近30日の進行中イベントでは、「${label}」が${count}件あります。全体の約${share}%です。主な登録例は「${categoryExamples.get(category) || "取得できませんでした"}」です。`,
       background: `人工衛星などで確認された自然現象のうち、「${label}」に分類された進行中イベントです。`,
       whyNow: `現在のNASA EONETデータを分類別に数え、件数が上位になったため選びました。`,
       before: "分類平均",
@@ -456,7 +484,20 @@ export default async function Home() {
                   </div>
                 </div>
               </div>
-              <p className="summary">{story.summary}</p>
+              <section className="complete-explainer" aria-label={`${story.title}の日本語解説`}>
+                <div className="explainer-main">
+                  <small>何が起きた？</small>
+                  <p>{story.summary}</p>
+                </div>
+                <div>
+                  <small>なぜ今日、載せた？</small>
+                  <p>{story.whyNow}</p>
+                </div>
+                <div className="source-ja">
+                  <small>元データを日本語でいうと</small>
+                  <p>{sourceInJapanese(story)}</p>
+                </div>
+              </section>
               <p className="compare-title">数字でくらべると…</p>
               <div className="change" aria-label="変化の比較">
                 <div><small>これまで・普段</small><b>{story.before}</b></div>
@@ -466,15 +507,11 @@ export default async function Home() {
               </div>
               <div className="foot">
                 <span>{story.note}</span>
-                <a href={story.source} target="_blank" rel="noreferrer">{story.sourceLabel} ↗</a>
+                <a href={story.source} target="_blank" rel="noreferrer">一次ソース原文を確認する ↗</a>
               </div>
               <details className="deep">
                 <summary>もっと深く調べる ＋</summary>
                 <div className="deep-grid">
-                  <section>
-                    <span>どうして目立った？</span>
-                    <p>{story.whyNow}</p>
-                  </section>
                   <section>
                     <span>知っておきたい背景</span>
                     <p>{story.background}</p>
