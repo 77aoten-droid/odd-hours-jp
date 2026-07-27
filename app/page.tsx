@@ -22,6 +22,12 @@ type Story = {
   sourceLabel: string;
   score: number;
   note: string;
+  relatedNews?: {
+    headline: string;
+    source: string;
+    date: string;
+    url: string;
+  }[];
 };
 
 async function getJson(url: string) {
@@ -34,6 +40,49 @@ async function getJson(url: string) {
   } catch {
     return null;
   }
+}
+
+async function getText(url: string) {
+  try {
+    const response = await fetch(url, {
+      next: { revalidate: 3600 },
+      headers: { "User-Agent": "ODD-HOURS/4.1 (context research)" },
+    } as RequestInit & { next: { revalidate: number } });
+    return response.ok ? await response.text() : "";
+  } catch {
+    return "";
+  }
+}
+
+function decodeXml(value: string) {
+  return value
+    .replaceAll("<![CDATA[", "").replaceAll("]]>", "")
+    .replaceAll("&amp;", "&").replaceAll("&quot;", "\"")
+    .replaceAll("&#39;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">");
+}
+
+async function relatedNews(title: string) {
+  const xml = await getText(
+    `https://news.google.com/rss/search?q=${encodeURIComponent(`"${title}" when:3d`)}&hl=en&gl=US&ceid=US:en`,
+  );
+  const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 3);
+  return Promise.all(items.map(async (match) => {
+    const body = match[1];
+    const rawHeadline = decodeXml(body.match(/<title>([\s\S]*?)<\/title>/)?.[1] || "");
+    const source = decodeXml(body.match(/<source[^>]*>([\s\S]*?)<\/source>/)?.[1] || "報道機関");
+    const url = decodeXml(body.match(/<link>([\s\S]*?)<\/link>/)?.[1] || "");
+    const pubDate = body.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1] || "";
+    const translated = await translateToJapanese(rawHeadline.replace(new RegExp(`\\s+-\\s+${source}$`), ""));
+    return {
+      headline: translated || rawHeadline,
+      source,
+      date: pubDate ? new Intl.DateTimeFormat("ja-JP", {
+        month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
+        timeZone: "Asia/Tokyo",
+      }).format(new Date(pubDate)) : "日時不明",
+      url,
+    };
+  }));
 }
 
 function day(ago: number) {
@@ -83,8 +132,9 @@ async function wikiDetails(article: string) {
     : await getJson(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(article)}`);
   const translatedExtract = japaneseTitle ? "" : await translateToJapanese(summary?.extract || "");
   const translatedDescription = japaneseTitle ? "" : await translateToJapanese(summary?.description || "");
+  const displayTitle = summary?.titles?.normalized || japaneseTitle || article.replaceAll("_", " ");
   return {
-    title: summary?.titles?.normalized || japaneseTitle || article.replaceAll("_", " "),
+    title: displayTitle,
     original: article.replaceAll("_", " "),
     summary:
       translatedExtract ||
@@ -93,6 +143,7 @@ async function wikiDetails(article: string) {
       summary?.description ||
       "急に検索・閲覧が増えた項目です。詳しい人物像や出来事は、参照元の公開情報で確認できます。",
     description: translatedDescription || summary?.description || "",
+    relatedNews: await relatedNews(displayTitle),
   };
 }
 
@@ -153,6 +204,7 @@ async function collectStories(): Promise<Story[]> {
       sourceLabel: "元データと詳細を見る",
       score: Math.min(100, 50 + rising.jump),
       note: `${Number(rising.views || 0).toLocaleString("ja-JP")}回閲覧`,
+      relatedNews: info.relatedNews,
     });
   }
 
@@ -194,6 +246,7 @@ async function collectStories(): Promise<Story[]> {
       sourceLabel: "元データと詳細を見る",
       score: Math.min(94, 45 + item.jump),
       note: `${Number(item.views || 0).toLocaleString("ja-JP")}回閲覧`,
+      relatedNews: info.relatedNews,
     });
   });
 
@@ -497,6 +550,43 @@ export default async function Home() {
                   <small>元データを日本語でいうと</small>
                   <p>{sourceInJapanese(story)}</p>
                 </div>
+              </section>
+              <section className="evidence-report" aria-label="確からしさと関連報道">
+                <div className="evidence-head">
+                  <div>
+                    <span className="evidence-badge confirmed">確認済み</span>
+                    <b>観測値と順位変化</b>
+                  </div>
+                  <div>
+                    <span className={`evidence-badge ${story.relatedNews?.length ? "possible" : "unknown"}`}>
+                      {story.relatedNews?.length ? "関連の可能性" : story.source.includes("wikipedia.org") ? "原因不明" : "一次データで完結"}
+                    </span>
+                    <b>{story.relatedNews?.length ? "同じ時期の報道" : story.source.includes("wikipedia.org") ? "急上昇の直接原因" : "今回使った観測情報"}</b>
+                  </div>
+                </div>
+                {story.relatedNews?.length ? (
+                  <>
+                    <div className="evidence-intro">
+                      <strong>この時期、何が報じられた？</strong>
+                      <p>同じ名前を含む直近3日間の報道です。時期が重なっていても、閲覧急上昇の原因だと証明されたわけではありません。</p>
+                    </div>
+                    <ol className="news-timeline">
+                      {story.relatedNews.map((news, newsIndex) => (
+                        <li key={`${news.url}-${newsIndex}`}>
+                          <time>{news.date}</time>
+                          <div><small>{news.source}</small><p>{news.headline}</p></div>
+                          {news.url && <a href={news.url} target="_blank" rel="noreferrer" aria-label={`${news.headline}の報道を確認`}>確認 ↗</a>}
+                        </li>
+                      ))}
+                    </ol>
+                  </>
+                ) : (
+                  <p className="no-news">
+                    {story.source.includes("wikipedia.org")
+                      ? "一次データだけでは、なぜこの日に検索が増えたのか確認できませんでした。分からない原因は、推測で埋めません。"
+                      : "この項目は観測機関が公開した数値・場所・分類の範囲で説明しています。別の出来事との因果関係は示していません。"}
+                  </p>
+                )}
               </section>
               <p className="compare-title">数字でくらべると…</p>
               <div className="change" aria-label="変化の比較">
