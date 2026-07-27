@@ -626,6 +626,37 @@ export default async function Home() {
     timeZone: "Asia/Tokyo",
   }).format(new Date());
   const shareText = encodeURIComponent("昨日と比べて、世界は何が変わった？ 今日の変化を3つだけ。 #ODDHOURS");
+  const indexedStories = stories.map((story, index) => ({ story, index }));
+  const storyGroups = [
+    {
+      key: "people",
+      label: "PEOPLE RADAR",
+      title: "今日、だれが調べられた？",
+      description: "Wikipediaの閲覧順位を前日と比べ、人物・作品・出来事への急な関心を観測します。",
+      items: indexedStories.filter(({ story }) => story.source.includes("wikipedia.org")),
+    },
+    {
+      key: "earth",
+      label: "EARTH RADAR",
+      title: "今日、地球はどう動いた？",
+      description: "USGSの観測から、世界の地震件数と直近24時間で最大の地震を分けて見ます。",
+      items: indexedStories.filter(({ story }) => story.source.includes("earthquake.usgs.gov")),
+    },
+    {
+      key: "nature",
+      label: "NATURE RADAR",
+      title: "今日、衛星はなにを見た？",
+      description: "NASA EONETが追跡する進行中の自然現象を、種類と件数から観察します。",
+      items: indexedStories.filter(({ story }) => story.source.includes("eonet.gsfc.nasa.gov")),
+    },
+    {
+      key: "space",
+      label: "SPACE RADAR",
+      title: "今日、宇宙の天気は？",
+      description: "NOAAのKp指数から、太陽活動による地球の磁場の乱れを観測します。",
+      items: indexedStories.filter(({ story }) => story.source.includes("swpc.noaa.gov")),
+    },
+  ];
 
   return (
     <main>
@@ -739,7 +770,17 @@ export default async function Home() {
       </section>
 
       <section className="stories" aria-label="今日の変化10選">
-        {stories.map((story, index) => (
+        {storyGroups.map((group) => (
+          <section className={`department department-${group.key}`} key={group.key} aria-labelledby={`${group.key}-title`}>
+            <div className="department-header">
+              <div>
+                <span>{group.label}</span>
+                <h2 id={`${group.key}-title`}>{group.title}</h2>
+              </div>
+              <p>{group.description}</p>
+              <b aria-hidden="true">{group.key === "people" ? "?" : group.key === "earth" ? "◎" : group.key === "nature" ? "✦" : "☀"}</b>
+            </div>
+            {group.items.map(({ story, index }) => (
           <article key={story.title} className={`story story-${index + 1}`} id={`story-${index + 1}`}>
             <div className="story-number"><small>観察</small>{numberLabel(index)}</div>
             <div className="story-main">
@@ -811,6 +852,8 @@ export default async function Home() {
               </aside>
             </div>
           </article>
+            ))}
+          </section>
         ))}
       </section>
 
