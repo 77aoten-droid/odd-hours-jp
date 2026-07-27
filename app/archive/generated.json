@@ -1,0 +1,73 @@
+[
+  {
+    "date": "2026-07-27",
+    "year": 2026,
+    "month": 7,
+    "day": 27,
+    "weekday": "月",
+    "mood": "注目・地震・山火事。公開データで世界を見比べた日。",
+    "summary": "Wikipediaの急上昇、世界の地震235件、NASAが追跡する山火事128件を記録しました。数値の同時変化は因果関係を意味しません。",
+    "stories": [
+      {
+        "number": 1,
+        "genre": "みんなの注目",
+        "title": "Pralhad Joshi",
+        "takeaway": "英語版Wikipedia上位100圏外から1位へ。756,586閲覧"
+      },
+      {
+        "number": 2,
+        "genre": "みんなの注目",
+        "title": "Abhijeet Dipke",
+        "takeaway": "英語版Wikipedia上位100圏外から15位へ。115,576閲覧"
+      },
+      {
+        "number": 3,
+        "genre": "みんなの注目",
+        "title": "Lou Koller",
+        "takeaway": "英語版Wikipedia上位100圏外から18位へ。98,623閲覧"
+      },
+      {
+        "number": 4,
+        "genre": "みんなの注目",
+        "title": "SummerSlam (2026)",
+        "takeaway": "英語版Wikipedia上位100圏外から19位へ。96,917閲覧"
+      },
+      {
+        "number": 5,
+        "genre": "地球の動き",
+        "title": "世界の地震、きょうは多い？少ない？",
+        "takeaway": "直近24時間は235件。7日間の日平均300件より22％少ない"
+      },
+      {
+        "number": 6,
+        "genre": "地震",
+        "title": "きょう最大の地震はM5.8",
+        "takeaway": "99 km SE of Atka, Alaska付近。規模と被害の大きさは同じ意味ではありません"
+      },
+      {
+        "number": 7,
+        "genre": "自然現象",
+        "title": "NASAが追う「山火事」",
+        "takeaway": "直近30日の進行中イベントで128件"
+      },
+      {
+        "number": 8,
+        "genre": "自然現象",
+        "title": "NASAが追う「海氷・湖氷」",
+        "takeaway": "直近30日の進行中イベントで13件"
+      },
+      {
+        "number": 9,
+        "genre": "自然現象",
+        "title": "NASAが追う「激しい嵐」",
+        "takeaway": "直近30日の進行中イベントで4件"
+      },
+      {
+        "number": 10,
+        "genre": "宇宙天気",
+        "title": "宇宙の天気は穏やか",
+        "takeaway": "直近約3時間の最大Kp指数は1.0。Kpは0〜9の指標"
+      }
+    ]
+  }
+]

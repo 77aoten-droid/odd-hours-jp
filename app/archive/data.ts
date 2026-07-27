@@ -1,10 +1,12 @@
+import generatedDays from "./generated.json";
+
 export type ArchiveStory = { number: number; genre: string; title: string; takeaway: string };
 export type ArchiveDay = {
   date: string; year: number; month: number; day: number; weekday: string;
   mood: string; summary: string; stories: ArchiveStory[];
 };
 
-export const archiveDays: ArchiveDay[] = [{
+const firstDay: ArchiveDay = {
   date: "2026-07-25", year: 2026, month: 7, day: 25, weekday: "土",
   mood: "注目・山火事・地震。遠く離れた出来事が、数字で一本につながった日。",
   summary: "検索の急上昇ではインド映画『Jana Nayagan』が目立ち、自然観測では山火事が大半を占めました。世界の地震活動は直近1週間の平均より静かでした。",
@@ -20,7 +22,13 @@ export const archiveDays: ArchiveDay[] = [{
     { number: 9, genre: "自然現象", title: "世界の激しい嵐", takeaway: "NASAが4件を追跡中" },
     { number: 10, genre: "宇宙天気", title: "宇宙の天気は穏やか", takeaway: "Kp指数は低い水準" },
   ],
-}];
+};
+
+export const archiveDays: ArchiveDay[] = [
+  ...(generatedDays as ArchiveDay[]),
+  firstDay,
+].filter((item, index, all) => all.findIndex((other) => other.date === item.date) === index)
+  .sort((a, b) => b.date.localeCompare(a.date));
 
 export function getArchiveDay(date: string) {
   return archiveDays.find((item) => item.date === date);

@@ -1,0 +1,36 @@
+name: Save daily world archive
+
+on:
+  schedule:
+    - cron: "5 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: odd-hours-daily-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Collect and save today's observations
+        run: node scripts/update-archive.mjs
+      - name: Commit only when today's record changed
+        run: |
+          if git diff --quiet -- app/archive/generated.json; then
+            echo "No archive change"
+            exit 0
+          fi
+          git config user.name "odd-hours-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/archive/generated.json
+          git commit -m "Archive daily world observations"
+          git push
