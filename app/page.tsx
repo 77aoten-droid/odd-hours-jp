@@ -389,6 +389,10 @@ export default async function Home() {
       </header>
 
       <section className="hero" id="top">
+        <nav className="mode-switch" aria-label="今日と過去の切り替え">
+          <a href="#today" className="active"><small>NOW</small><strong>今日を見る</strong><span>最新の10項目</span></a>
+          <a href="/archive"><small>ARCHIVE</small><strong>過去を見る</strong><span>年・月・日から探す →</span></a>
+        </nav>
         <div className="tape">毎朝更新・自由研究みたいな世界ニュース</div>
         <p className="eyebrow">きのうとくらべる、30秒の世界観察</p>
         <h1>世界はきょう、<br /><em>こうなった！</em></h1>
@@ -399,13 +403,27 @@ export default async function Home() {
         <div className="promise">
           <span>① なにが？</span><span>② どれくらい？</span><span>③ どうして？</span>
         </div>
-        <nav className="jump" aria-label="今日の10項目">
+        <nav className="jump" id="today" aria-label="今日の10項目">
           {stories.map((story, index) => (
             <a href={`#story-${index + 1}`} key={story.title}>
               <b>0{index + 1}</b><span>{story.title}</span>
             </a>
           ))}
         </nav>
+      </section>
+
+      <section className="selection-guide" id="how-we-choose">
+        <div className="selection-heading">
+          <span>どうやって選ぶの？</span>
+          <h2>「有名だから」ではなく、<br />いつもとの差で選びます。</h2>
+          <p>危険度ランキングではありません。前日や短期平均から見て、数字の動きが大きかったものを「違和感」として拾います。</p>
+        </div>
+        <div className="selection-steps">
+          <article><b>1</b><small>集める</small><h3>4つの一次データ</h3><p>Wikimediaの閲覧、USGSの地震、NASAの自然現象、NOAAの宇宙天気を毎朝取得。</p></article>
+          <article><b>2</b><small>くらべる</small><h3>前日・短期平均との差</h3><p>閲覧順位は前日、地震は7日平均、自然現象は30日内の構成、宇宙天気は直近値で比較。</p></article>
+          <article><b>3</b><small>しぼる</small><h3>ジャンルを分けて10選</h3><p>変化の大きさを点数化。上位3件は同じ種類ばかりにならないよう、異なる分野から選びます。</p></article>
+        </div>
+        <div className="selection-caution"><b>大事なルール</b><span>同じ日に複数の数字が動いても、因果関係があるとは断定しません。欠測は欠測として扱います。</span></div>
       </section>
 
       <section className="stories" aria-label="今日の変化10選">

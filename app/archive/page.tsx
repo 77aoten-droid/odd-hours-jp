@@ -7,6 +7,7 @@ export const metadata = {
 };
 
 export default function ArchivePage() {
+  const latest = archiveDays[0];
   return <main className="archive-page">
     <header><Link href="/" className="logo">ODD HOURS</Link><Link href="/" className="header-link">今日を見る</Link></header>
     <section className="archive-hero">
@@ -14,6 +15,11 @@ export default function ArchivePage() {
       <h1>あの日、世界は<br /><em>どうだった？</em></h1>
       <p>ニュースの見出しではなく、その日に人々が何を調べ、地球や宇宙で何が動いたのかを10個の発見で残します。</p>
       <div className="archive-note"><b>記録は2026年7月25日から。</b><span>存在しない過去は作らず、観測した日だけを少しずつ増やします。</span></div>
+    </section>
+    <section className="archive-dashboard" aria-label="アーカイブの使い方">
+      <div><small>保存済み</small><strong>{archiveDays.length}<span>日分</span></strong><p>毎朝、新しい日付が増えます</p></div>
+      <div><small>いちばん新しい記録</small><strong>{latest.month}月{latest.day}日</strong><Link href={`/archive/${latest.date}`}>最新の10選を見る →</Link></div>
+      <div className="archive-howto"><small>見かた</small><p><b>年</b>を選ぶ → <b>月</b>を選ぶ → 読みたい<b>日付</b>を押す</p></div>
     </section>
     <section className="archive-years" aria-label="年別アーカイブ">
       {archiveYears.map((year) => {
