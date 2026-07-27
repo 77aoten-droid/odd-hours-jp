@@ -30,6 +30,26 @@ type Story = {
   }[];
 };
 
+type GameSignal = {
+  appId: number;
+  title: string;
+  image: string;
+  players: number;
+  price: string;
+  discount: number;
+  rank?: number;
+  kind: "free" | "paid";
+};
+
+const freeGameCandidates = [
+  { appId: 730, title: "Counter-Strike 2" },
+  { appId: 570, title: "Dota 2" },
+  { appId: 578080, title: "PUBG: BATTLEGROUNDS" },
+  { appId: 1172470, title: "Apex Legends" },
+  { appId: 230410, title: "Warframe" },
+  { appId: 2767030, title: "Marvel Rivals" },
+];
+
 async function getJson(url: string) {
   try {
     const response = await fetch(url, {
@@ -40,6 +60,58 @@ async function getJson(url: string) {
   } catch {
     return null;
   }
+}
+
+function formatPlayers(value: number) {
+  return `${new Intl.NumberFormat("ja-JP").format(value)}人`;
+}
+
+async function currentPlayers(appId: number) {
+  const data = await getJson(
+    `https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=${appId}`,
+  );
+  return Number(data?.response?.player_count || 0);
+}
+
+async function collectGameSignals(): Promise<GameSignal[]> {
+  const [freeSignals, featured] = await Promise.all([
+    Promise.all(freeGameCandidates.map(async (game) => ({
+      ...game,
+      image: `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/header.jpg`,
+      players: await currentPlayers(game.appId),
+      price: "基本プレイ無料",
+      discount: 0,
+      kind: "free" as const,
+    }))),
+    getJson("https://store.steampowered.com/api/featuredcategories?cc=jp&l=japanese"),
+  ]);
+
+  const paidCandidates = (featured?.top_sellers?.items || [])
+    .filter((item: any) => Number(item.final_price) > 0)
+    .slice(0, 12);
+  const paidSignals = await Promise.all(paidCandidates.map(async (item: any, index: number) => {
+    const details = await getJson(
+      `https://store.steampowered.com/api/appdetails?appids=${item.id}&cc=jp&l=japanese`,
+    );
+    const app = details?.[item.id]?.data;
+    if (!app || app.type !== "game") return null;
+    return {
+      appId: Number(item.id),
+      title: app.name || item.name,
+      image: item.large_capsule_image || app.header_image,
+      players: await currentPlayers(Number(item.id)),
+      price: app.price_overview?.final_formatted || `${Math.round(item.final_price / 100).toLocaleString("ja-JP")}円`,
+      discount: Number(item.discount_percent || 0),
+      rank: index + 1,
+      kind: "paid" as const,
+    };
+  }));
+
+  const free = freeSignals.sort((a, b) => b.players - a.players)[0];
+  const paid = paidSignals
+    .filter((game): game is GameSignal => Boolean(game))
+    .sort((a, b) => (a.rank || 99) - (b.rank || 99))[0];
+  return [free, paid].filter(Boolean);
 }
 
 async function getText(url: string) {
@@ -546,7 +618,7 @@ async function collectStories(): Promise<Story[]> {
 }
 
 export default async function Home() {
-  const stories = await collectStories();
+  const [stories, games] = await Promise.all([collectStories(), collectGameSignals()]);
   const stamp = new Intl.DateTimeFormat("ja-JP", {
     month: "long",
     day: "numeric",
@@ -603,6 +675,57 @@ export default async function Home() {
             ))}
           </nav>
         </details>
+      </section>
+
+      <section className="game-radar" aria-labelledby="game-radar-title">
+        <div className="game-radar-head">
+          <div>
+            <span>NEW CATEGORY・GAME</span>
+            <h2 id="game-radar-title">今日、どのゲームが<br />動いてる？</h2>
+          </div>
+          <p>
+            Steam公式データから、<strong>無料ゲームは現在プレイヤー数</strong>、
+            <strong>有料ゲームは国内売上順位</strong>を中心に観測します。
+          </p>
+        </div>
+        <div className="game-grid">
+          {games.map((game) => (
+            <article className={`game-card ${game.kind}`} key={game.appId}>
+              <div className="game-image">
+                <img src={game.image} alt="" />
+                <span>{game.kind === "free" ? "FREE｜無料ゲーム" : "PAID｜有料ゲーム"}</span>
+              </div>
+              <div className="game-body">
+                <small>{game.kind === "free" ? "いま人が集まっている" : "いま売上上位にいる"}</small>
+                <h3>{game.title}</h3>
+                <dl>
+                  <div><dt>現在プレイヤー</dt><dd>{game.players ? formatPlayers(game.players) : "取得できません"}</dd></div>
+                  <div>
+                    <dt>{game.kind === "free" ? "価格" : "Steam国内順位"}</dt>
+                    <dd>{game.kind === "free" ? game.price : `売上 ${game.rank}位`}</dd>
+                  </div>
+                  {game.kind === "paid" && <div><dt>現在価格</dt><dd>{game.price}{game.discount ? `（${game.discount}% OFF）` : ""}</dd></div>}
+                </dl>
+                <p className="game-reason">
+                  {game.kind === "free"
+                    ? `候補6作品の現在プレイヤー数を同時に比べ、最も多かった作品です。人気の絶対値であり、昨日からの増加率ではありません。`
+                    : `Steam日本ストアの「売上上位」に掲載された有料ゲームです。順位は販売本数ではなく、売上額を基にした並びです。`}
+                </p>
+                <a href={`https://store.steampowered.com/app/${game.appId}/`} target="_blank" rel="noreferrer">
+                  Steam公式ページを見る ↗
+                </a>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="platform-notes">
+          <div><b>STEAM</b><span>人数・価格・売上順位を表示</span></div>
+          <div><b>PLAYSTATION</b><span>公式トップ10の順位を観測予定</span></div>
+          <div><b>NINTENDO</b><span>eショップ売上順位を観測予定</span></div>
+        </div>
+        <p className="game-caution">
+          ※ PlayStationとNintendoは同時接続人数を公表していません。Steamの人数と同じものとして推定せず、取得できる公式順位だけを別の物差しで扱います。
+        </p>
       </section>
 
       <section className="stories" aria-label="今日の変化10選">
